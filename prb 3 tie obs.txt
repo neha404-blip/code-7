@@ -1,0 +1,31 @@
+library(survival)
+# Fit Cox model (Breslow method handles ties automatically)
+survival_data<-read.csv("survival_data.csv")
+head(survival_data)
+
+cox_model <- coxph(Surv(time, status) ~ age + treatment,
+                   data = survival_data)
+cox_model <- coxph(Surv(time, status) ~ age + treatment,
+                   data = survival_data, method = "breslow")
+# Coefficients and interpretation
+summary(cox_model)
+
+# Test the proportional hazards assumption
+cox.zph(cox_model)
+
+
+#estimate and plot the survival function for each treatment group based on your model.
+# Estimate and plot the survival function
+survival_data$treatment <- factor(survival_data$treatment)
+surv_fit <- survfit(cox_model)
+
+plot(surv_fit,
+     col = c("blue", "red"), 
+     lty = 1, 
+     xlab ="Time",
+     ylab = "Survival Probability")
+legend("topright",
+       legend =levels(survival_data$treatment),
+       col = c("blue","red"),
+       lty = 1)
+

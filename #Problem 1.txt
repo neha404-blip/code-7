@@ -1,0 +1,110 @@
+ #Problem 1
+
+
+# Load required libraries
+library(survival)
+library(muhaz)
+library(ggplot2)
+set.seed(123)
+n <- 200
+t_seq <- seq(0.01, 100, by = 0.1)
+
+
+### 1. Simulate Data
+
+  # Exponential (rate = 0.1)
+  exp_data <- rexp(n, rate = 0.1)
+  
+# Weibull (shape = 2, scale = 10)
+weib_data <- rweibull(n, shape = 2, scale = 10)
+
+# Log-normal (meanlog = 2, sdlog = 0.5)
+lnorm_data <- rlnorm(n, meanlog = 2, sdlog = 0.5)
+
+# 1. Exponential Distribution MLE 
+
+
+lambda_hat_exp <- 1 / mean(exp_data)
+S_exp_mle <- exp(-lambda_hat_exp * t_seq)
+h_exp_mle <- rep(lambda_hat_exp, length(t_seq))
+#2 Weibull Distribution MLE
+
+# Negative log-likelihood for Weibull
+nll_weibull <- function(par) {
+  shape <- par[1]
+  scale <- par[2]
+  -sum(dweibull(weib_data, shape = shape, scale = scale, log =
+                  TRUE))
+}
+
+# Optimization
+weib_mle <- optim(c(1, 1), nll_weibull, method = "L-BFGS-B",
+                  lower = c(0.01, 0.01))
+shape_hat <- weib_mle$par[1]
+scale_hat <- weib_mle$par[2]
+S_weib_mle <- exp(-(t_seq / scale_hat)^shape_hat)
+h_weib_mle <- (shape_hat / scale_hat) * (t_seq /
+                                           scale_hat)^(shape_hat - 1)
+###3. Log-normal Distribution MLE 
+# Log-transform data
+log_data <- log(lnorm_data)
+mu_hat <- mean(log_data)
+sigma_hat <- sd(log_data)
+S_lnorm_mle <- 1 - plnorm(t_seq, meanlog = mu_hat, sdlog =
+                            sigma_hat)
+f_lnorm_mle <- dlnorm(t_seq, meanlog = mu_hat, sdlog = sigma_hat)
+h_lnorm_mle <- f_lnorm_mle / S_lnorm_mle
+par(mfrow = c(2, 3))
+
+
+# Survival Functions
+plot(t_seq, S_exp_mle, type = "l", col = "blue", main =
+       "Exponential S(t)", ylab = "S(t)", xlab = "t")
+plot(t_seq, S_weib_mle, type = "l", col = "red", main =
+       "Weibull S(t)",ylab = "S(t)", xlab = "t")
+plot(t_seq, S_lnorm_mle, type = "l", col = "green", main = 
+       "lognormal S(t)",ylab = "S(t)", xlab = "t")
+
+
+
+
+
+# Hazard Functions
+plot(t_seq, h_exp_mle, type = "l", col = "blue", main =
+       "Exponential h(t)", ylab = "h(t)", xlab = "t")
+plot(t_seq, h_weib_mle, type = "l", col = "red", main = "Weibull
+h(t)", ylab = "h(t)", xlab = "t")
+plot(t_seq, h_lnorm_mle, type = "l", col = "green", main =
+       "Log-normal h(t)", ylab = "h(t)", xlab = "t")
+
+# Exponential
+km_exp <- survfit(Surv(exp_data) ~ 1)
+plot(km_exp, main = "KM Survival Estimate - Exponential", xlab
+     = "Time", ylab = "Survival")
+# Weibull
+km_weib <- survfit(Surv(weib_data) ~ 1)
+plot(km_weib, main = "KM Survival Estimate - Weibull", xlab =
+       "Time", ylab = "Survival")
+# Log-normal
+km_lnorm <- survfit(Surv(lnorm_data) ~ 1)
+plot(km_lnorm, main = "KM Survival Estimate - Log-normal", xlab
+     = "Time", ylab = "Survival")
+#Exponential
+haz_exp <- muhaz(exp_data)
+plot(haz_exp, main = "Hazard Estimate - Exponential")
+# Weibull
+haz_weib <- muhaz(weib_data)
+plot(haz_weib, main = "Hazard Estimate - Weibull")
+# Log-normal
+haz_lnorm <- muhaz(lnorm_data)
+plot(haz_lnorm, main = "Hazard Estimate - Log-normal")
+
+# Introduce right-censoring
+censor_time <- runif(n, 0, 80)
+obs_time <- pmin(weib_data, censor_time)
+status <- as.numeric(weib_data <= censor_time)
+# Kaplan-Meier with censoring
+km_cens <- survfit(Surv(obs_time, status) ~ 1)
+plot(km_cens, main = "KM Estimate with Censoring - Weibull",
+     xlab = "Time", ylab = "Survival")
+

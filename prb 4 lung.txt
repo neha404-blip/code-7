@@ -1,0 +1,89 @@
+#1. 
+
+install.packages("survival")
+library(survival)
+lung=survival::lung
+head(lung)
+
+#summary(lung) eta dile shb variable er ta dekhabe
+
+sapply(
+  lung[, c("age","wt.loss")], 
+       function(x) 
+         c(
+  Mean = mean(x, na.rm=TRUE),
+  Median = median(x, na.rm=TRUE),
+  SD = sd(x, na.rm=TRUE),
+  Min = min(x, na.rm=TRUE),
+  Max = max(x, na.rm=TRUE)
+))
+
+#2.
+
+
+km_fit <- survfit(Surv(time, status == 2) ~ 1, data = lung)
+plot(km_fit,
+     xlab = "Time (days)",
+     ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curve (Entire Cohort)",
+     col = "blue",
+     lwd=2
+     )
+
+
+
+#3.
+
+
+km_sex <- survfit(Surv(time, status == 2) ~ sex, data = lung)
+
+plot(km_sex,
+     col = c("blue", "red"),
+     lwd = 2,
+     xlab = "Time (days)",
+     ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curve: Male vs Female")
+legend("bottomleft",
+       legend = c("male", "female"),
+       col = c("blue", "red"),
+       lwd = 2)
+
+survdiff(Surv(time, status == 2) ~ sex, data = lung)
+
+#4.
+
+cox_model <- coxph(Surv(time, status == 2) ~ age + sex, data = lung)
+summary(cox_model)
+
+
+#5.
+
+cox_model <- coxph(Surv(time, status == 2) ~ age + sex, data = lung)
+
+cox.zph(cox_model)
+
+plot(cox.zph(cox_model))
+
+
+#6.
+
+model_wt <- coxph(Surv(time, status == 2) ~ wt.loss, data = lung)
+summary(model_wt)
+exp(coef(model_wt))
+
+#7.
+
+km_ecog<-survfit(Surv(time,status==2)~ph.ecog,data=lung)
+
+summary(km_ecog)
+plot(km_ecog,
+     col = c("blue", "red", "green", "purple"),
+     lwd = 2,
+     xlab = "Time (days)",
+     ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curves by ECOG Score")
+
+legend("topright",
+       legend = c("ECOG 0", "ECOG 1", "ECOG 2", "ECOG 3"),
+       col = c("blue", "red", "green", "purple"),
+       lwd = 2)

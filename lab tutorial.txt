@@ -1,0 +1,101 @@
+library(survival)
+library(survminer)
+data=read.csv("Cancer_Survival.csv")
+head(data)
+summary(data)
+
+#(a)
+km_fit=survfit(Surv(time_weeks, status) ~ treatment, data = data)
+
+
+plot(km_fit,
+     col = c("blue","red"),
+     lwd = 2,
+     xlab = "Time (Weeks)",
+     ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curves")
+
+legend("topright",
+       legend = c("Treatment 0","Treatment 1"),
+       col = c("blue","red"),
+       lwd = 2)
+
+# Log-rank test
+logrank_test=survdiff(Surv(time_weeks, status) ~ treatment,
+                         data = data)
+
+logrank_test
+p_value = 1 - pchisq(logrank_test$chisq ,df=1)
+p_value
+
+#(c)
+# Exponential survival regression
+
+exp_model <- survreg(
+  Surv(time_weeks, status) ~ age + treatment +
+    tumor_size + wbc_count,
+  data = data,
+  dist = "exponential"
+)
+
+summary(exp_model)
+# Full model
+full_model <- survreg(
+  Surv(time_weeks, status) ~ age + treatment +
+    tumor_size + wbc_count,
+  data = data,
+  dist = "exponential"
+)
+
+# Reduced model (without treatment)
+reduced_model <- survreg(
+  Surv(time_weeks, status) ~ age +
+    tumor_size + wbc_count,
+  data = data,
+  dist = "exponential"
+)
+
+anova(reduced_model, full_model)
+
+#(d)
+
+cox_model <- coxph(
+  Surv(time_weeks, status) ~ age +
+    treatment + tumor_size +
+    wbc_count,
+  data = data
+)
+
+summary(cox_model)
+ph_test <- cox.zph(cox_model)
+
+ph_test
+plot(ph_test)
+
+#f tumor_size violates PH assumption:
+#Time-dependent effect
+#stratified cox model
+
+#(e)
+summary(cox_model)
+exp(coef(cox_model))
+exp(confint(cox_model))
+
+summary(exp_model)
+
+exp(-coef(exp_model))
+
+
+#(f)
+new_patient <- data.frame(
+  age = 60,
+  treatment = 1,
+  tumor_size = 4.5,
+  wbc_count = 9.8
+)
+
+surv_pred <- survfit(
+  cox_model,
+  newdata = new_patient
+)
+summary(surv_pred, times = 24)
