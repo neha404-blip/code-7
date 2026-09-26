@@ -1,0 +1,219 @@
+############[[schizophrenia]]]]##########
+
+
+library(survival)
+
+schizo <- read.table("schizophrenia.csv", header=T, sep=";")
+time <- schizo$Time
+censor <- schizo$Censor
+age <- schizo$Age
+gender <- schizo$Gender
+marital <- schizo$Marital
+Education <- schizo$Education
+
+semi.age <- coxph(Surv(time,censor) ~ age)
+summary(semi.age)
+
+semi.marital <- coxph(Surv(time,censor) ~ as.factor(marital))
+summary(semi.marital)
+
+semi.gender <- coxph(Surv(time,censor) ~ as.factor(gender))
+summary(semi.gender)
+
+semi.Education <- coxph(Surv(time,censor) ~ Education)
+summary(semi.Education)
+
+semi.maritalgender <- coxph(Surv(time,censor) ~ as.factor(marital) + as.factor(gender))
+summary(semi.maritalgender)
+anova(semi.maritalgender)
+
+================================================================================================
+############################[[[[[hazard ratio ...data frame toiri kore]]]]]#################
+==============================================================================================
+library(survival)
+# Sample data creation
+time <- c(10, 15, 20, 25, 30)
+status <- c(1, 1, 0, 1, 0)
+age <- c(20, 25, 35, 45, 40)
+study_data <- data.frame(time = time, status = status, age = age)
+# Fit the exponential survival regression model
+model <- survreg(Surv(time, status) ~ age, data = study_data,
+                 dist = "exponential")
+# Display the model summary
+summary(model)
+# Calculate hazard ratios
+hazard_ratios <- exp(coef(model))
+print(hazard_ratios)
+
+# Create a new data frame for prediction
+new_data <- data.frame(age = seq(min(study_data$age),
+                                 max(study_data$age), length.out = 100))
+# Calculate predicted survival probabilities
+predicted_survival <- function(age) {
+  # The scale parameter for the exponential distribution is
+  #fixed at 1
+  exp(-exp(coef(model)[1] + coef(model)[2] * age))
+}
+# Get survival probabilities for new ages
+new_data$survival_probability <- predicted_survival(new_data$age)
+# Plot the survival curves
+plot(new_data$age, new_data$survival_probability, type = "l",
+     xlab = "Age", ylab = "Survival Probability",
+     main = "Exponential Survival Curve", col = "blue")
+
+=====================================================================================
+===================================================================================
+                        LIFE TABLE
+===================================================================================
+# 1. Data load ebong Hazard Rate
+df <- read.csv('us_life_tables_2015.csv')
+qx <- df$qx
+age <- 0:(length(qx) - 1)
+
+# Plot Hazard Rate
+plot(age, qx, type = 'l', col = 'red',
+     xlab = 'Age (years)', ylab = 'Hazard function',
+     main = 'Hazard rate, United States 2015')
+
+# 2. Survival Function Calculation: S(x) = cumprod(1 - qx)
+surv <- cumprod(1 - qx)
+
+# Plot Survival Function
+plot(age, surv, type = 'l', col = 'blue',
+     xlab = 'Age (years)', ylab = 'Survival function',
+     main = 'Survival function, United States 2015')
+
+# 3. CDF Calculation: F(x) = 1 - S(x)
+cdf <- 1 - surv
+
+# Plot CDF
+plot(age, cdf, type = 'l', col = 'green',
+     xlab = 'Age (years)', ylab = 'CDF',
+     main = 'CDF of lifetimes, United States 2015')
+
+# 4. PMF Calculation: f(x)
+pmf <- c(cdf[1], diff(cdf))
+
+# Plot PMF
+plot(age, pmf, type = 'l', col = 'purple',
+     xlab = 'Age (years)', ylab = 'PMF',
+     main = 'PMF of lifetimes, United States 2015')
+
+# 5. Life Expectancy ebong Expected Remaining Lifetime
+n <- length(age)
+total_expected <- numeric(n)
+remaining_expected <- numeric(n)
+
+for (i in 1:n) {
+  # Conditional PMF for ages >= age[i]
+  cond_pmf <- pmf[i:n] / sum(pmf[i:n])
+  cond_ages <- age[i:n]
+
+  # Total expected lifetime at age[i]
+  total_expected[i] <- sum(cond_ages * cond_pmf)
+  
+  # Expected remaining lifetime at age[i]
+  remaining_expected[i] <- total_expected[i] - age[i]
+}
+
+# Plot Life Expectancy
+plot(age, total_expected, type = 'l', col = 'orange',
+     xlab = 'Age (years)', ylab = 'Life expectancy',
+     main = 'Life expectancy, United States 2015')
+
+# Plot Expected Remaining Lifetime
+plot(age, remaining_expected, type = 'l', col = 'magenta',
+     xlab = 'Age (years)', ylab = 'Expected remaining lifetime',
+     main = 'Expected remaining lifetime, United States 2015')
+
+
+
+# ============================================================
+# CHAPTER 4: NONPARAMETRIC ESTIMATION OF A SURVIVOR FUNCTION
+# R Code: Kaplan-Meier Estimator (all examples combined)
+# ============================================================
+
+library(survival)
+#install.packages('KMsurv')
+
+# ============================================================
+# EXAMPLE 1: Basic KM Estimator (Manual Data)
+# ------------------------------------------------------------
+# Ekta choto manually toiri dataset diye simple KM survival
+# curve fit kora hocche (overall, no grouping variable)
+# ============================================================
+
+time <- c(3, 5, 6, 12, 12, 15, 15, 22, 37, 40, 45)
+censoring <- c(0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0)
+data1 <- data.frame(time, censoring)
+
+# Fit Kaplan-Meier estimator (formula: Surv(time, status) ~ 1)
+KM.est <- survfit(Surv(time, censoring) ~ 1, type = "kaplan-meier",
+                   conf.type = "log-log")
+KM.est
+summary(KM.est)
+
+# Kaplan-Meier plot (manual data)
+plot(survfit(Surv(time, censoring) ~ 1, data = data1),
+     xlab = "Days",
+     ylab = "Overall survival probability")
+
+# Kaplan-Meier plot (built-in lung dataset, R-er nijer dataset)
+plot(survfit(Surv(time, status) ~ 1, data = lung),
+     xlab = "Days",
+     ylab = "Overall survival probability")
+
+
+# ============================================================
+# EXAMPLE 2: KM Estimator — Left-Truncated and Right-Censored
+# ------------------------------------------------------------
+# psych dataset use kore, jekhane patient-der entry age
+# different (left-truncated) ebong study-end e censored hoy
+# (right-censored). Surv(start, stop, event) format use hoy.
+# ============================================================
+
+######## Left-truncated and right-censored ########
+data(psych)
+attach(psych)
+head(psych)
+
+# Surv(age, age+time, death) -> start-stop-event format
+my.surv.object <- Surv(age, age + time, death)
+
+KM.est <- survfit(my.surv.object, type = "kaplan-meier",
+                   conf.type = "log-log")
+KM.est
+summary(KM.est)
+
+
+# ============================================================
+# EXAMPLE 3: KM Estimator + Cumulative Hazard (KMsurv package)
+# ------------------------------------------------------------
+# tongue dataset (cancer study) use kore, ekta subgroup
+# (type==1) niye KM curve fit kora hocche, tarpor KM survival
+# theke Cumulative Hazard function H(t) = -log(S(t)) ber kora
+# hocche.
+# ============================================================
+
+#install.packages('KMsurv')
+library(KMsurv)
+#library(help = KMsurv)
+
+#################### Right Censoring ####################
+data(tongue)
+attach(tongue)
+
+# Subgroup: only type == 1 patients
+time[type == 1]
+
+my.surv <- Surv(time[type == 1], delta[type == 1], type = 'right')
+
+my.fit <- summary(survfit(my.surv ~ 1, type = "kaplan-meier",
+                           conf.type = "log-log"))
+my.fit
+
+# Cumulative Hazard estimate from KM survival estimate
+# Formula: H_hat(t) = -log(S_hat(t))
+H.hat <- -log(my.fit$surv)
+H.hat <- c(H.hat, H.hat[length(H.hat)])
+H.hat
